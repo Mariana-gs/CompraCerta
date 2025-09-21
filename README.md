@@ -21,7 +21,7 @@ Será desenvolvido um **aplicativo mobile multiplataforma (Flutter)**, sem persi
 
 ## Requisitos  
 
-### ✅ Requisitos Funcionais  
+### Requisitos Funcionais  
 1. O usuário deve poder adicionar itens à lista de compras.  
 2. O usuário deve poder editar e remover itens da lista.  
 3. O sistema deve permitir definir quantidade e preço dos itens.  
@@ -30,14 +30,15 @@ Será desenvolvido um **aplicativo mobile multiplataforma (Flutter)**, sem persi
 6. O sistema deve exibir o total da lista e mostrar quando o valor ultrapassar o orçamento.  
 7. O usuário deve poder adicionar itens no carrinho (itens já comprados).  
 
-### ⚙️ Requisitos Não Funcionais  
+### Requisitos Não Funcionais  
 - O sistema deve ser Android via Flutter.  
 - A interface deve ser simples e intuitiva.  
-- O app não terá persistência local (os dados são descartados ao fechar).  
+- O app não terá persistência local.  
 - O cálculo dos totais e comparações deve ser rápido e em tempo real.  
 
 ---
 
 ## Diagrama de Caso de Uso  
 
+<img width="768" height="1069" alt="Diagrama de caso de uso1" src="https://github.com/user-attachments/assets/1572c6c5-1232-4702-bd5f-871c138180c6" />
 
