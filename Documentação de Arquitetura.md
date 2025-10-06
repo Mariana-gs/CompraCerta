@@ -44,20 +44,22 @@ Persistence Layer (Persistência Local)
 
 Diagrama de Contexto (Nível 1)  
 
-![Nível 1](modeloC4Img\nivel1.png)
-
+<img width="329" height="539" alt="nivel1" src="https://github.com/user-attachments/assets/64813f00-86e5-40b8-8275-a1f6d1e7a0b2" />
 
 Diagrama de Contêineres (Nível 2)  
 
-![Nível 2](modeloC4Img\nivel2.png)
+<img width="501" height="828" alt="nivel2" src="https://github.com/user-attachments/assets/8585d835-9a4f-4e21-a03d-21f98adcf02c" />
+
 
 Diagrama de Componentes (Nível 3)  
 
-![Nível 3](modeloC4Img\nivel3.png)
+<img width="936" height="712" alt="nivel3" src="https://github.com/user-attachments/assets/0fc7250c-1dc0-48ee-b0b1-5484472f8c99" />
+
 
 Diagrama de Código / Estrutura (Nível 4)  
 
-![Nível 4](modeloC4Img\nivel4.png)
+<img width="1344" height="539" alt="nivel4" src="https://github.com/user-attachments/assets/56fd5eaa-a6f8-4664-8557-8a16f6fd574b" />
+
 
 ---
 
