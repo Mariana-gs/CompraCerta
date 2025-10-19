@@ -1,48 +1,47 @@
 // lib/screens/shopping_list_screen.dart
+import 'package:compracerta/models/shopping_list.dart';
 import 'package:compracerta/models/shopping_list_item.dart';
+import 'package:compracerta/screens/list_management_screen.dart';
+import 'package:compracerta/services/shopping_list_service.dart';
 import 'package:compracerta/widgets/shopping_list_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 1. Importe o pacote
 
 class ShoppingListScreen extends StatefulWidget {
-  const ShoppingListScreen({Key? key}) : super(key: key);
+  // Recebe a lista inicial a ser exibida
+  final ShoppingList shoppingList;
+  const ShoppingListScreen({Key? key, required this.shoppingList}) : super(key: key);
 
   @override
   _ShoppingListScreenState createState() => _ShoppingListScreenState();
 }
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  // A lista agora começa vazia e será preenchida com os dados salvos
-  final List<ShoppingListItem> _items = [];
-  static const String _itemsKey = 'shopping_items_list'; // Chave para salvar os dados
+  // Variáveis de estado
+  late ShoppingList _currentList;
+  final ShoppingListService _listService = ShoppingListService();
 
   @override
   void initState() {
     super.initState();
-    _loadItems(); // 2. Carrega os itens quando a tela é iniciada
+    // Inicializa a lista da tela com a que foi passada pelo widget
+    _currentList = widget.shoppingList;
   }
 
-  // 3. Método para CARREGAR os itens da memória
-  Future<void> _loadItems() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Lê a lista de strings salva no dispositivo
-    final List<String> savedItems = prefs.getStringList(_itemsKey) ?? [];
-    setState(() {
-      // Converte a lista de strings de volta para uma lista de ShoppingListItem
-      _items.clear();
-      _items.addAll(savedItems.map((name) => ShoppingListItem(name: name)));
-    });
+  // Salva as alterações feitas na lista atual no armazenamento do dispositivo
+  Future<void> _saveChanges() async {
+    final allLists = await _listService.getLists();
+    // Encontra o índice da lista atual na lista de todas as listas
+    final index = allLists.indexWhere((list) => list.name == _currentList.name);
+
+    if (index != -1) {
+      // Se encontrou, substitui a lista antiga pela nova (com os itens atualizados)
+      allLists[index] = _currentList;
+      await _listService.saveLists(allLists);
+    }
   }
 
-  // 4. Método para SALVAR os itens na memória
-  Future<void> _saveItems() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Converte a lista de ShoppingListItem para uma lista de strings (só os nomes)
-    final List<String> itemNames = _items.map((item) => item.name).toList();
-    await prefs.setStringList(_itemsKey, itemNames);
-  }
-
+  // Adiciona um novo item à lista
   void _addItem() {
     final TextEditingController textController = TextEditingController();
     showDialog(
@@ -66,9 +65,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 final String itemName = textController.text.trim();
                 if (itemName.isNotEmpty) {
                   setState(() {
-                    _items.add(ShoppingListItem(name: itemName));
+                    _currentList.items.add(ShoppingListItem(name: itemName));
                   });
-                  _saveItems(); // 5. Salva a lista após adicionar um item
+                  _saveChanges(); // Salva as alterações
                   Navigator.of(context).pop();
                 }
               },
@@ -79,20 +78,21 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     );
   }
 
+  // Deleta um item da lista
   void _deleteItem(int index) {
     setState(() {
-      _items.removeAt(index);
+      _currentList.items.removeAt(index);
     });
-    _saveItems(); // 6. Salva a lista após remover um item
+    _saveChanges(); // Salva as alterações
   }
 
+  // Adiciona um item ao carrinho (lógica a ser implementada)
   void _addToCart(int index) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_items[index].name} movido para o carrinho!')),
+      SnackBar(content: Text('${_currentList.items[index].name} movido para o carrinho!')),
     );
   }
 
-  // O resto do código (o método build e os sub-widgets) permanece exatamente o mesmo
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,13 +105,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               _buildHeader(),
               const SizedBox(height: 24),
               Expanded(
-                child: _items.isEmpty
-                    ? const Center(child: Text("Sua lista está vazia!"))
+                child: _currentList.items.isEmpty
+                    ? const Center(child: Text("Sua lista está vazia!\nAdicione um novo item abaixo."))
                     : ListView.builder(
-                        itemCount: _items.length,
+                        itemCount: _currentList.items.length,
                         itemBuilder: (context, index) {
                           return ShoppingListItemWidget(
-                            itemName: _items[index].name,
+                            itemName: _currentList.items[index].name,
                             onDelete: () => _deleteItem(index),
                             onAddToCart: () => _addToCart(index),
                           );
@@ -126,6 +126,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     );
   }
 
+  // Constrói o cabeçalho da tela
   Widget _buildHeader() {
     return Row(
       children: [
@@ -151,19 +152,34 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             ),
             child: Center(
               child: Text(
-                'MINHA LISTA',
-                style: GoogleFonts.bungee(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                _currentList.name.toUpperCase(), // Exibe o nome da lista atual
+                style: GoogleFonts.bungee(color: Colors.black, fontSize: 16),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
+        ),
+        // Botão para navegar para a tela de gerenciamento de listas
+        IconButton(
+          icon: const Icon(Icons.edit_note, size: 30),
+          onPressed: () async {
+            // Navega para a tela de gerenciamento
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ListManagementScreen()),
+            );
+            // Ao retornar, recarrega a lista ativa para refletir qualquer mudança
+            final activeList = await _listService.getActiveList();
+            setState(() {
+              _currentList = activeList;
+            });
+          },
         ),
       ],
     );
   }
 
+  // Constrói o botão de adicionar novo item
   Widget _buildAddItemButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -172,18 +188,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'NOVO ITEM',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.black,
           minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28.0),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.0)),
         ),
       ),
     );

@@ -7,6 +7,8 @@ import 'package:compracerta/widgets/calculation_result_button.dart'; // Atualize
 import 'package:compracerta/widgets/product_input_card.dart'; // Atualize
 import 'package:compracerta/widgets/custom_bottom_nav_bar.dart';
 import 'package:compracerta/screens/shopping_list_screen.dart';
+import 'package:compracerta/services/shopping_list_service.dart';
+
 
 class PriceComparisonScreen extends StatefulWidget {
   @override
@@ -18,6 +20,9 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
   final TextEditingController _priceController1 = TextEditingController();
   final TextEditingController _quantityController2 = TextEditingController();
   final TextEditingController _priceController2 = TextEditingController();
+  final ShoppingListService _listService = ShoppingListService();
+
+  
 
   final PriceComparisonService _comparisonService = PriceComparisonService();
 
@@ -36,12 +41,13 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
   int _selectedIndex = 1; // Começa com o item do meio selecionado
 
   // Função para lidar com o toque nos itens
- void _onItemTapped(int index) {
-    // index 0 é a tela de Lista
+void _onItemTapped(int index) async { // A função agora é async
     if (index == 0) {
+      // Carrega a lista ativa do dispositivo e navega para a tela
+      final activeList = await _listService.getActiveList();
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ShoppingListScreen()),
+        MaterialPageRoute(builder: (context) => ShoppingListScreen(shoppingList: activeList)),
       );
     }
     // index 1 é a tela atual de Comparação, então não fazemos nada
