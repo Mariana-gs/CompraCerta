@@ -7,6 +7,7 @@ import 'package:compracerta/widgets/shopping_list_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:compracerta/services/cart_service.dart';
+import 'package:flutter/services.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   // Recebe a lista inicial a ser exibida
@@ -81,6 +82,83 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     );
   }
 
+  Future<ShoppingListItem?> _showAddToCartDialog(ShoppingListItem item) async {
+    final formKey = GlobalKey<FormState>();
+    final TextEditingController quantityController = TextEditingController(text: '1');
+    final TextEditingController priceController = TextEditingController();
+
+    return showDialog<ShoppingListItem>(
+      context: context,
+      barrierDismissible: false, // O usuário deve tocar nos botões para fechar
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Adicionar "${item.name}"'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                // Campo de Quantidade
+                TextFormField(
+                  controller: quantityController,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: 'Quantidade',
+                    hintText: 'Ex: 1',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty || int.tryParse(value) == null || int.parse(value) <= 0) {
+                      return 'Insira uma quantidade válida';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Campo de Preço
+                TextFormField(
+                  controller: priceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Preço (Opcional)',
+                    hintText: 'Ex: 12.99',
+                    prefixText: 'R\$ ',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Retorna nulo
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Adicionar'),
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  // Cria uma nova instância do item com os dados do popup
+                  final updatedItem = ShoppingListItem(
+                    name: item.name,
+                    quantity: int.parse(quantityController.text),
+                    price: double.tryParse(priceController.text.replaceAll(',', '.')) ?? 0.0,
+                  );
+                  Navigator.of(context).pop(updatedItem); // Retorna o item atualizado
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Deleta um item da lista
   void _deleteItem(int index) {
     setState(() {
@@ -90,28 +168,32 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   // Adiciona um item ao carrinho (lógica a ser implementada)
+void _addToCart(int index) async {
+    final itemToAdd = _currentList.items[index];
 
-  void _addToCart(int index) async {
-    // 1. Pega o item que será movido
-    final itemToMove = _currentList.items[index];
+    // Mostra o diálogo para o usuário inserir quantidade e preço
+    final updatedItem = await _showAddToCartDialog(itemToAdd);
 
-    // 2. Adiciona o item ao serviço do carrinho
-    await _cartService.addItemToCart(itemToMove);
+    // Se o usuário preencheu e confirmou (updatedItem não é nulo)
+    if (updatedItem != null) {
+      // 1. Adiciona o item com os novos dados ao serviço do carrinho
+      await _cartService.addItemToCart(updatedItem);
 
-    // 3. Remove o item da lista de compras atual e atualiza a UI
-    setState(() {
-      _currentList.items.removeAt(index);
-    });
+      // 2. Remove o item da lista de compras atual e atualiza a UI
+      setState(() {
+        _currentList.items.removeAt(index);
+      });
 
-    // 4. Salva o estado atual da lista de compras (agora sem o item)
-    _saveChanges();
+      // 3. Salva o estado atual da lista de compras (agora sem o item)
+      await _saveChanges();
 
-    // 5. Mostra uma confirmação
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${itemToMove.name} movido para o carrinho!')),
-    );
+      // 4. Mostra uma confirmação
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${updatedItem.name} movido para o carrinho!')),
+      );
+    }
+    // Se o usuário cancelou, não faz nada.
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
