@@ -46,6 +46,7 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
+
 /// Salva a compra no histórico ou atualiza uma compra existente em modo de edição.
 Future<void> _saveOrCompletePurchase() async {
     if (_editingPurchase != null) {
@@ -125,6 +126,8 @@ Future<void> _completePurchase() async {
       );
     }
   }
+
+  
   // --- NOVO DIÁLOGO PARA NOME DO SUPERMERCADO ---
   Future<String?> _showSupermarketDialog() async {
     final TextEditingController controller = TextEditingController();

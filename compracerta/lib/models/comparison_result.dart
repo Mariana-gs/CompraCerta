@@ -9,4 +9,5 @@ class ComparisonResult {
     required this.calculationDetails1,
     required this.calculationDetails2,
   });
+  
 }
