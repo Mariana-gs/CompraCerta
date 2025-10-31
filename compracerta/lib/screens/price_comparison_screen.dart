@@ -8,6 +8,7 @@ import 'package:compracerta/widgets/product_input_card.dart'; // Atualize
 import 'package:compracerta/widgets/custom_bottom_nav_bar.dart';
 import 'package:compracerta/screens/shopping_list_screen.dart';
 import 'package:compracerta/services/shopping_list_service.dart';
+import 'package:compracerta/screens/cart_screen.dart';
 
 
 class PriceComparisonScreen extends StatefulWidget {
@@ -40,8 +41,7 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
   // 2. ADICIONE UMA VARIÁVEL DE ESTADO PARA O ÍNDICE SELECIONADO
   int _selectedIndex = 1; // Começa com o item do meio selecionado
 
-  // Função para lidar com o toque nos itens
-void _onItemTapped(int index) async { // A função agora é async
+ void _onItemTapped(int index) async {
     if (index == 0) {
       // Carrega a lista ativa do dispositivo e navega para a tela
       final activeList = await _listService.getActiveList();
@@ -52,16 +52,16 @@ void _onItemTapped(int index) async { // A função agora é async
     }
     // index 1 é a tela atual de Comparação, então não fazemos nada
     else if (index == 1) {
-      print("Já estamos na tela de comparação.");
+      // print("Já estamos na tela de comparação.");
     }
-    // index 2 seria a tela de Carrinho (ainda não implementada)
+    // index 2 agora navega para a tela de Carrinho
     else if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tela do Carrinho ainda não implementada.")),
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CartScreen()),
       );
     }
   }
-
   final Map<String, List<String>> _unitOptions = {
     'g': ['mg', 'g', 'kg'],
     'L': ['mL', 'L'],

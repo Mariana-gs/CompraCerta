@@ -1,19 +1,32 @@
 // lib/models/shopping_list_item.dart
+
 class ShoppingListItem {
   String name;
-  bool isInCart;
+  bool isChecked;
+  int quantity;
+  double price;
 
-  ShoppingListItem({required this.name, this.isInCart = false});
+  ShoppingListItem({
+    required this.name,
+    this.isChecked = false,
+    this.quantity = 1,
+    this.price = 0.0, // Preço pode ser definido no carrinho
+  });
 
-  // Converte um objeto ShoppingListItem em um Map (JSON)
+  // Converte o objeto para um mapa JSON
   Map<String, dynamic> toJson() => {
         'name': name,
-        'isInCart': isInCart,
+        'isChecked': isChecked,
+        'quantity': quantity,
+        'price': price,
       };
 
-  // Cria um objeto ShoppingListItem a partir de um Map (JSON)
+  // Cria um objeto a partir de um mapa JSON
   factory ShoppingListItem.fromJson(Map<String, dynamic> json) => ShoppingListItem(
         name: json['name'],
-        isInCart: json['isInCart'],
+        isChecked: json['isChecked'] ?? false,
+        quantity: json['quantity'] ?? 1,
+        // Garante que o preço seja lido como double
+        price: (json['price'] ?? 0.0).toDouble(),
       );
 }

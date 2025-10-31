@@ -1,6 +1,7 @@
 // lib/services/price_comparison_service.dart
 import 'package:compracerta/models/comparison_result.dart'; // Atualize 'seu_projeto'
 
+
 class PriceComparisonService {
   double _convertToBaseUnit(String unit, double value) {
     switch (unit) {

@@ -6,6 +6,7 @@ import 'package:compracerta/services/shopping_list_service.dart';
 import 'package:compracerta/widgets/shopping_list_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:compracerta/services/cart_service.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   // Recebe a lista inicial a ser exibida
@@ -20,6 +21,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   // Variáveis de estado
   late ShoppingList _currentList;
   final ShoppingListService _listService = ShoppingListService();
+
+  final CartService _cartService = CartService();
 
   @override
   void initState() {
@@ -87,9 +90,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   // Adiciona um item ao carrinho (lógica a ser implementada)
-  void _addToCart(int index) {
+
+  void _addToCart(int index) async {
+    // 1. Pega o item que será movido
+    final itemToMove = _currentList.items[index];
+
+    // 2. Adiciona o item ao serviço do carrinho
+    await _cartService.addItemToCart(itemToMove);
+
+    // 3. Remove o item da lista de compras atual e atualiza a UI
+    setState(() {
+      _currentList.items.removeAt(index);
+    });
+
+    // 4. Salva o estado atual da lista de compras (agora sem o item)
+    _saveChanges();
+
+    // 5. Mostra uma confirmação
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_currentList.items[index].name} movido para o carrinho!')),
+      SnackBar(content: Text('${itemToMove.name} movido para o carrinho!')),
     );
   }
 

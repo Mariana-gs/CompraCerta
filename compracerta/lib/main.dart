@@ -23,7 +23,6 @@ class MyApp extends StatelessWidget {
       theme: baseTheme.copyWith( // Usamos .copyWith() para modificar o tema base
         // 1. APLICAR DM SANS COMO FONTE BASE PARA TUDO
         textTheme: GoogleFonts.dmSansTextTheme(baseTextTheme).copyWith(
-          
           // 2. SOBRESCREVER OS ESTILOS DE TÍTULO/DESTAQUE COM BUNGEE
           displayLarge: GoogleFonts.bungee(textStyle: baseTextTheme.displayLarge),
           displayMedium: GoogleFonts.bungee(textStyle: baseTextTheme.displayMedium),
