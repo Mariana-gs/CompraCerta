@@ -22,7 +22,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   // Variáveis de estado
   late ShoppingList _currentList;
   final ShoppingListService _listService = ShoppingListService();
-
+Set<String> _itemsInCart = {};
   final CartService _cartService = CartService();
 
   @override
@@ -30,6 +30,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     super.initState();
     // Inicializa a lista da tela com a que foi passada pelo widget
     _currentList = widget.shoppingList;
+    _loadCartStatus();
+  }
+
+Future<void> _loadCartStatus() async {
+    final cartItems = await _cartService.getCart();
+    // Usamos um Set para uma verificação mais rápida (O(1))
+    setState(() {
+      _itemsInCart = cartItems.map((item) => item.name).toSet();
+    });
   }
 
   // Salva as alterações feitas na lista atual no armazenamento do dispositivo
@@ -160,40 +169,44 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   // Deleta um item da lista
-  void _deleteItem(int index) {
+void _deleteItem(int index) async {
+    // Adicional: remove o item do carrinho se ele for deletado da lista
+    final itemNameToDelete = _currentList.items[index].name;
+
     setState(() {
       _currentList.items.removeAt(index);
     });
-    _saveChanges(); // Salva as alterações
+    await _saveChanges(); // Salva a remoção da lista
+
+    // Opcional: para deletar da lista, delete também do carrinho
+    // final cartItems = await _cartService.getCart();
+    // final cartIndex = cartItems.indexWhere((item) => item.name == itemNameToDelete);
+    // if (cartIndex != -1) {
+    //   await _cartService.removeItemFromCart(cartIndex);
+    // }
+    // await _loadCartStatus(); // Recarrega o status do carrinho
   }
 
   // Adiciona um item ao carrinho (lógica a ser implementada)
 void _addToCart(int index) async {
     final itemToAdd = _currentList.items[index];
-
-    // Mostra o diálogo para o usuário inserir quantidade e preço
     final updatedItem = await _showAddToCartDialog(itemToAdd);
 
-    // Se o usuário preencheu e confirmou (updatedItem não é nulo)
     if (updatedItem != null) {
-      // 1. Adiciona o item com os novos dados ao serviço do carrinho
       await _cartService.addItemToCart(updatedItem);
 
-      // 2. Remove o item da lista de compras atual e atualiza a UI
-      setState(() {
-        _currentList.items.removeAt(index);
-      });
+      // EM VEZ DE REMOVER, ATUALIZAMOS O ESTADO DO CARRINHO
+      await _loadCartStatus(); // Isso vai recarregar a lista e redesenhar o item como "no carrinho"
 
-      // 3. Salva o estado atual da lista de compras (agora sem o item)
-      await _saveChanges();
-
-      // 4. Mostra uma confirmação
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${updatedItem.name} movido para o carrinho!')),
+        SnackBar(content: Text('${updatedItem.name} adicionado ao carrinho!')),
       );
     }
-    // Se o usuário cancelou, não faz nada.
   }
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -211,8 +224,13 @@ void _addToCart(int index) async {
                     : ListView.builder(
                         itemCount: _currentList.items.length,
                         itemBuilder: (context, index) {
+                          final item = _currentList.items[index];
+                          // VERIFICA SE O ITEM ESTÁ NO NOSSO SET DE ITENS DO CARRINHO
+                          final bool itemIsInCart = _itemsInCart.contains(item.name);
+
                           return ShoppingListItemWidget(
-                            itemName: _currentList.items[index].name,
+                            itemName: item.name,
+                            isInCart: itemIsInCart, // PASSA A INFORMAÇÃO PARA O WIDGET
                             onDelete: () => _deleteItem(index),
                             onAddToCart: () => _addToCart(index),
                           );
@@ -226,7 +244,6 @@ void _addToCart(int index) async {
       ),
     );
   }
-
   // Constrói o cabeçalho da tela
   Widget _buildHeader() {
     return Row(
