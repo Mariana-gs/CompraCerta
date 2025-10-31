@@ -24,6 +24,14 @@ class HistoryService {
     await prefs.setStringList(_historyKey, historyJson);
   }
 
+  Future<void> deletePurchase(String purchaseId) async {
+    final historyList = await getHistory();
+    // Remove o item da lista onde o ID corresponde
+    historyList.removeWhere((purchase) => purchase.id == purchaseId);
+    // Salva a lista atualizada
+    await _saveHistory(historyList);
+  }
+
   // Adiciona uma nova compra ao histórico
   Future<void> addPurchaseToHistory(PurchaseHistory purchase) async {
     final historyList = await getHistory();
@@ -35,6 +43,7 @@ class HistoryService {
     final historyList = await getHistory();
     // Encontra o índice da compra que tem o mesmo ID
     final index = historyList.indexWhere((p) => p.id == updatedPurchase.id);
+
 
     if (index != -1) {
       // Se encontrou, substitui a compra antiga pela nova

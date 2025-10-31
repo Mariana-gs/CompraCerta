@@ -8,6 +8,7 @@ import 'package:compracerta/widgets/cart_item_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart'; 
 import 'package:compracerta/screens/history_screen.dart';
+import 'package:flutter/services.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -45,79 +46,54 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  // --- FUNÇÃO DE FINALIZAR/SALVAR ATUALIZADA ---
+/// Salva a compra no histórico ou atualiza uma compra existente em modo de edição.
 Future<void> _saveOrCompletePurchase() async {
-  // Verifica se estamos em modo de edição.
-  if (_editingPurchase != null) {
-    // --- LÓGICA PARA ATUALIZAR UMA COMPRA EXISTENTE ---
-
-    // 1. Cria um novo objeto PurchaseHistory com os dados atualizados.
-    //    É crucial reutilizar o mesmo ID para que o serviço saiba qual item substituir.
-    final updatedPurchase = PurchaseHistory(
-      id: _editingPurchase!.id, // Reutiliza o ID da compra que está sendo editada.
-      supermarketName: _editingPurchase!.supermarketName, // Mantém o nome original do supermercado.
-      items: List.from(_cartItems), // Usa a lista de itens atual do carrinho.
-      total: _total, // Usa o total recalculado.
-      budget: _budget, // Usa o orçamento atual.
-      date: DateTime.now(), // Atualiza a data para o momento da edição.
-    );
-
-    // 2. Chama o serviço para encontrar e substituir a compra antiga no histórico.
-    await _historyService.updatePurchase(updatedPurchase);
-
-    // 3. Atualiza o estado da UI para sair do modo de edição.
-    setState(() {
-      _editingPurchase = null; // Limpa o objeto de edição, retornando ao modo de carrinho normal.
-    });
-
-    // 4. Fornece feedback visual para o usuário.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Compra atualizada com sucesso!')),
-    );
-
-  } else {
-    // --- LÓGICA PARA SALVAR UMA NOVA COMPRA ---
-
-    // 1. Validação inicial: não permite salvar um carrinho vazio.
-    if (_cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('O carrinho está vazio!')),
-      );
-      return; // Interrompe a execução da função.
-    }
-
-    // 2. Pede ao usuário o nome do supermercado através de um diálogo.
-    final supermarketName = await _showSupermarketDialog();
-
-    // 3. Continua apenas se o usuário fornecer um nome.
-    if (supermarketName != null && supermarketName.isNotEmpty) {
-      // 4. Cria um objeto PurchaseHistory para a nova compra.
-      final newPurchase = PurchaseHistory(
-        id: const Uuid().v4(), // Gera um ID único e aleatório para a nova compra.
-        supermarketName: supermarketName, // Usa o nome fornecido pelo usuário.
-        items: List.from(_cartItems), // Usa os itens atuais do carrinho.
+    if (_editingPurchase != null) {
+      final updatedPurchase = PurchaseHistory(
+        id: _editingPurchase!.id,
+        supermarketName: _editingPurchase!.supermarketName,
+        items: List.from(_cartItems),
         total: _total,
         budget: _budget,
         date: DateTime.now(),
       );
-
-      // 5. Adiciona a nova compra ao serviço de histórico.
-      await _historyService.addPurchaseToHistory(newPurchase);
-
-      // 6. Limpa o carrinho atual para que o usuário possa começar uma nova compra.
-      await _cartService.clearCart();
-
-      // 7. Recarrega os dados da tela para refletir o carrinho vazio.
-      await _loadData();
-
-      // 8. Fornece feedback visual ao usuário.
+      await _historyService.updatePurchase(updatedPurchase);
+      setState(() {
+        _editingPurchase = null;
+        _cartItems = _cartBeforeEdit;
+        _cartBeforeEdit = [];
+        _calculateTotal();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Compra em "$supermarketName" salva no histórico!')),
+        const SnackBar(content: Text('Compra atualizada com sucesso!')),
       );
+    } else {
+      if (_cartItems.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('O carrinho está vazio!')),
+        );
+        return;
+      }
+      final supermarketName = await _showSupermarketDialog();
+      if (supermarketName != null && supermarketName.isNotEmpty) {
+        final newPurchase = PurchaseHistory(
+          id: const Uuid().v4(),
+          supermarketName: supermarketName,
+          items: List.from(_cartItems),
+          total: _total,
+          budget: _budget,
+          date: DateTime.now(),
+        );
+        await _historyService.addPurchaseToHistory(newPurchase);
+        await _cartService.clearCart();
+        await _loadData();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Compra em "$supermarketName" salva no histórico!')),
+        );
+      }
     }
-    // Se o usuário cancelar o diálogo do supermercado, nada acontece.
   }
-}
+
 
 Future<void> _completePurchase() async {
     if (_cartItems.isEmpty) {
@@ -184,19 +160,27 @@ Future<void> _completePurchase() async {
     setState(() { _total = total; });
   }
 
+
   void _updateItem(int index, ShoppingListItem item) {
     setState(() {
       _cartItems[index] = item;
     });
-    _cartService.saveCart(_cartItems);
+    // SÓ SALVA NO CARRINHO ATIVO SE NÃO ESTIVER EDITANDO
+    if (_editingPurchase == null) {
+      _cartService.saveCart(_cartItems);
+    }
     _calculateTotal();
   }
+
 
   void _removeItem(int index) async {
     setState(() {
       _cartItems.removeAt(index);
     });
-    await _cartService.saveCart(_cartItems);
+    // SÓ SALVA NO CARRINHO ATIVO SE NÃO ESTIVER EDITANDO
+    if (_editingPurchase == null) {
+      await _cartService.saveCart(_cartItems);
+    }
     _calculateTotal();
   }
 
@@ -286,6 +270,100 @@ Future<void> _completePurchase() async {
     );
   }
 
+  // --- NOVA FUNÇÃO PARA CHAMAR O DIÁLOGO E ADICIONAR O ITEM ---
+void _quickAddItem() async {
+    final newItem = await _showQuickAddDialog();
+    if (newItem != null) {
+      setState(() {
+        _cartItems.add(newItem);
+        _calculateTotal();
+      });
+      // SÓ SALVA NO CARRINHO ATIVO SE NÃO ESTIVER EDITANDO
+      if (_editingPurchase == null) {
+        await _cartService.saveCart(_cartItems);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${newItem.name} adicionado ao carrinho!')),
+      );
+    }
+  }
+  // --- NOVO DIÁLOGO PARA ADIÇÃO RÁPIDA ---
+  Future<ShoppingListItem?> _showQuickAddDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final quantityController = TextEditingController(text: '1');
+    final priceController = TextEditingController();
+
+    return showDialog<ShoppingListItem>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Adicionar Item Rápido'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'Nome do Produto'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'O nome é obrigatório.';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: priceController,
+                decoration: const InputDecoration(
+                    labelText: 'Preço (unidade)', prefixText: 'R\$ '),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+              ),
+              TextFormField(
+                controller: quantityController,
+                decoration: const InputDecoration(labelText: 'Quantidade'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                validator: (value) {
+                  if (value == null ||
+                      value.isEmpty ||
+                      int.tryParse(value) == null ||
+                      int.parse(value) <= 0) {
+                    return 'Insira uma quantidade válida.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final newItem = ShoppingListItem(
+                  name: nameController.text.trim(),
+                  price: double.tryParse(priceController.text.replaceAll(',', '.')) ?? 0.0,
+                  quantity: int.parse(quantityController.text),
+                );
+                Navigator.pop(context, newItem);
+              }
+            },
+            child: const Text('Adicionar'),
+          )
+        ],
+      ),
+    );
+  }
+
  Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 24.0),
@@ -367,15 +445,16 @@ Future<void> _completePurchase() async {
       );
     }
   }
-  void _cancelEditing() {
+void _cancelEditing() {
     setState(() {
-      _cartItems = _cartBeforeEdit; // Restaura o carrinho para como estava antes
-      _editingPurchase = null;      // Sai do modo de edição
-      _calculateTotal();
+      _editingPurchase = null;
+      _cartItems = _cartBeforeEdit; // 1. Restaura o carrinho
+      _cartBeforeEdit = [];         // 2. LIMPA O BACKUP
+      _calculateTotal();            // 3. Recalcula o total
     });
-     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Edição cancelada.')),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Edição cancelada.')),
+    );
   }
 
   void _clearCart() async {
@@ -471,8 +550,9 @@ Future<void> _completePurchase() async {
                   border: Border.all(color: Colors.grey[300]!)
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.history),
-                  onPressed: () {},
+                  icon: const Icon(Icons.playlist_add), // Ícone alterado
+                  onPressed: _quickAddItem, // Chama a nova função
+                  tooltip: 'Adicionar Item Rápido',
                 ),
               ),
             ],
