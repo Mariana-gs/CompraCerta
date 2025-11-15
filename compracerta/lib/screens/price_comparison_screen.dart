@@ -1,20 +1,22 @@
 // lib/screens/price_comparison_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:compracerta/models/comparison_result.dart'; 
-import 'package:compracerta/services/price_comparison_service.dart'; 
-import 'package:compracerta/widgets/base_unit_selector.dart'; 
-import 'package:compracerta/widgets/calculation_result_button.dart'; 
-import 'package:compracerta/widgets/product_input_card.dart'; 
-import 'package:compracerta/widgets/custom_bottom_nav_bar.dart';
-import 'package:compracerta/screens/shopping_list_screen.dart';
-import 'package:compracerta/services/shopping_list_service.dart';
-import 'package:compracerta/screens/cart_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:compracerta/models/shopping_list.dart';
 import 'package:compracerta/models/shopping_list_item.dart';
+import 'package:compracerta/services/price_comparison_service.dart';
+import 'package:compracerta/services/shopping_list_service.dart';
 import 'package:compracerta/services/cart_service.dart';
-import 'package:flutter/services.dart';
-import 'package:compracerta/widgets/comparison_product_result_card.dart';
+import 'package:compracerta/screens/shopping_list_screen.dart';
+import 'package:compracerta/screens/cart_screen.dart';
+import 'package:compracerta/widgets/custom_bottom_nav_bar.dart';
 
+// --- Definição das Cores do Design ---
+const kYellowColor = Color(0xFFFFD54F); // Amarelo vibrante
+const kGreyLightColor = Color(0xFFE0E0E0); // Fundo dos cards
+const kGreyDarkerColor = Color(0xFFBDBDBD); // Fundo dos inputs
+const kDarkColor = Color(0xFF212121); // Botão Calcular
+const kTextColor = Colors.black;
 
 class PriceComparisonScreen extends StatefulWidget {
   @override
@@ -22,65 +24,64 @@ class PriceComparisonScreen extends StatefulWidget {
 }
 
 class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
+  // --- Controladores e Serviços (Funcionalidade Original Mantida) ---
   final TextEditingController _quantityController1 = TextEditingController();
   final TextEditingController _priceController1 = TextEditingController();
   final TextEditingController _quantityController2 = TextEditingController();
   final TextEditingController _priceController2 = TextEditingController();
-  final ShoppingListService _listService = ShoppingListService();
-  final CartService _cartService = CartService(); // Serviço do carrinho
-  final PriceComparisonService _comparisonService = PriceComparisonService();
   
-
- 
+  final ShoppingListService _listService = ShoppingListService();
+  final CartService _cartService = CartService(); 
+  final PriceComparisonService _comparisonService = PriceComparisonService();
 
   String _baseUnit = 'g';
   String _unit1 = 'g';
   String _unit2 = 'g';
+  
+  // Variáveis de Resultado
   String _resultMessage = '';
   String _calculationDetails1 = '';
   String _calculationDetails2 = '';
   bool _isExpanded = false;
   bool _showResult = false;
-  bool _isArrowDown = false;
-  bool _showDownArrowButton = false;
 
-  // 2. ADICIONE UMA VARIÁVEL DE ESTADO PARA O ÍNDICE SELECIONADO
-  int _selectedIndex = 1; // Começa com o item do meio selecionado
+  int _selectedIndex = 1; // Começa na tela de Comparação
 
- void _onItemTapped(int index) async {
-    if (index == 0) {
-      // Carrega a lista ativa do dispositivo e navega para a tela
-      final activeList = await _listService.getActiveList();
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ShoppingListScreen(shoppingList: activeList)),
-      );
-    }
-    // index 1 é a tela atual de Comparação, então não fazemos nada
-    else if (index == 1) {
-      // print("Já estamos na tela de comparação.");
-    }
-    // index 2 agora navega para a tela de Carrinho
-    else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CartScreen()),
-      );
-    }
-  }
   final Map<String, List<String>> _unitOptions = {
     'g': ['mg', 'g', 'kg'],
     'L': ['mL', 'L'],
     'Un': ['Un', 'Un/Pct', 'Un/Caixa'],
   };
 
+  // --- Lógica de Navegação ---
+  void _onItemTapped(int index) async {
+    if (index == 0) {
+      final activeList = await _listService.getActiveList();
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ShoppingListScreen(shoppingList: activeList)),
+      );
+    } else if (index == 1) {
+      // Já estamos aqui
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CartScreen()),
+      );
+    }
+  }
+
+  // --- Lógica de Comparação ---
   void _comparePrices() {
+    // Fecha o teclado ao calcular
+    FocusScope.of(context).unfocus();
+
     if (_quantityController1.text.isEmpty ||
         _priceController1.text.isEmpty ||
         _quantityController2.text.isEmpty ||
         _priceController2.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Por favor, preencha todos os campos.")),
+        const SnackBar(content: Text("Por favor, preencha todos os campos.")),
       );
       return;
     }
@@ -88,10 +89,10 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
     try {
       final result = _comparisonService.comparePrices(
         quantity1: double.parse(_quantityController1.text),
-        price1: double.parse(_priceController1.text),
+        price1: double.parse(_priceController1.text.replaceAll(',', '.')),
         unit1: _unit1,
         quantity2: double.parse(_quantityController2.text),
-        price2: double.parse(_priceController2.text),
+        price2: double.parse(_priceController2.text.replaceAll(',', '.')),
         unit2: _unit2,
         baseUnit: _baseUnit,
       );
@@ -101,9 +102,7 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
         _calculationDetails1 = result.calculationDetails1;
         _calculationDetails2 = result.calculationDetails2;
         _showResult = true;
-        _isExpanded = false; // Começa fechado para o usuário abrir se quiser
-        _showDownArrowButton = true;
-        _isArrowDown = false;
+        _isExpanded = false; 
       });
     } catch (e) {
       setState(() {
@@ -112,18 +111,44 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
         _calculationDetails2 = "";
         _showResult = true;
         _isExpanded = false;
-        _showDownArrowButton = false;
       });
     }
   }
 
+  void _resetFields() {
+    setState(() {
+      _quantityController1.clear();
+      _priceController1.clear();
+      _quantityController2.clear();
+      _priceController2.clear();
+      _resultMessage = '';
+      _calculationDetails1 = '';
+      _calculationDetails2 = '';
+      _isExpanded = false;
+      _showResult = false;
+    });
+  }
 
+  void _onBaseUnitChanged(String? newValue) {
+    setState(() {
+      _baseUnit = newValue!;
+      _unit1 = _unitOptions[_baseUnit]!.first;
+      _unit2 = _unitOptions[_baseUnit]!.first;
+    });
+  }
+
+  void _toggleExpand() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+  }
+
+  // --- Lógica de Adicionar ao Carrinho (Mantida intacta) ---
   Future<void> _handleAddToCart(int productNumber) async {
     final prefilledPrice = double.tryParse(
-        productNumber == 1 ? _priceController1.text : _priceController2.text
+        (productNumber == 1 ? _priceController1.text : _priceController2.text).replaceAll(',', '.')
     ) ?? 0.0;
 
-    // Mostra o diálogo de escolha inicial
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -159,7 +184,6 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
       return;
     }
 
-    // Mostra um diálogo para o usuário selecionar o item
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
@@ -183,7 +207,6 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
       ),
     );
 
-    // Se um item foi selecionado, continua o fluxo
     if (result != null) {
       final ShoppingListItem selectedItem = result['item'];
       final int listIndex = result['index'];
@@ -191,13 +214,11 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
     }
   }
 
-  /// 3a. Diálogo final para "Adicionar da Lista": Pede quantidade e confirma.
- Future<void> _showAddToCartDialog(ShoppingListItem item, double prefilledPrice, ShoppingList activeList, int listIndex) async {
+  Future<void> _showAddToCartDialog(ShoppingListItem item, double prefilledPrice, ShoppingList activeList, int listIndex) async {
     final formKey = GlobalKey<FormState>();
     final quantityController = TextEditingController(text: '1');
     final priceController = TextEditingController(text: prefilledPrice > 0 ? prefilledPrice.toStringAsFixed(2) : '');
 
-    // O diálogo para pegar quantidade e preço continua o mesmo
     final updatedItem = await showDialog<ShoppingListItem>(
       context: context,
       barrierDismissible: false,
@@ -244,28 +265,14 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
       },
     );
 
-    // Se o usuário confirmou e um item foi criado
     if (updatedItem != null) {
-      // 1. Adicionamos o item ao carrinho. Esta é a única ação necessária.
       await _cartService.addItemToCart(updatedItem);
-
-      // --- AS LINHAS ABAIXO FORAM REMOVIDAS ---
-      // activeList.items.removeAt(listIndex);  <-- REMOVIDO
-      // final allLists = await _listService.getLists(); <-- REMOVIDO
-      // final index = allLists.indexWhere((list) => list.name == activeList.name); <-- REMOVIDO
-      // if (index != -1) { <-- REMOVIDO
-      //   allLists[index] = activeList; <-- REMOVIDO
-      //   await _listService.saveLists(allLists); <-- REMOVIDO
-      // } <-- REMOVIDO
-
-      // 2. Mostramos a confirmação para o usuário.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${updatedItem.name} adicionado ao carrinho!')),
       );
     }
   }
 
-  /// 2b. Fluxo "Adicionar como Novo Item": Mostra o diálogo de adição rápida.
   Future<void> _addNewItemToCart(double prefilledPrice) async {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
@@ -327,145 +334,362 @@ class _PriceComparisonScreenState extends State<PriceComparisonScreen> {
     }
   }
 
-
-  void _resetFields() {
-    setState(() {
-      _quantityController1.clear();
-      _priceController1.clear();
-      _quantityController2.clear();
-      _priceController2.clear();
-      _resultMessage = '';
-      _calculationDetails1 = '';
-      _calculationDetails2 = '';
-      _isExpanded = false;
-      _showResult = false;
-      _showDownArrowButton = false;
-      _isArrowDown = false;
-    });
-  }
-
-  void _onBaseUnitChanged(String? newValue) {
-    setState(() {
-      _baseUnit = newValue!;
-      _unit1 = _unitOptions[_baseUnit]!.first;
-      _unit2 = _unitOptions[_baseUnit]!.first;
-    });
-  }
-
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-      _isArrowDown = !_isArrowDown;
-    });
-  }
-
+  // --- Construção da Interface (Novo Visual) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
       ),
-      body: Column(
-        children: [
-          SizedBox(height: 56),
-          Center(child: Text("Compra Certa")),
-          SizedBox(height: 32),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Cabeçalho Amarelo "COMPARAR"
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  color: kYellowColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text(
+                    "COMPARAR",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900, // Fonte "Black"
+                      color: kTextColor,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                 ),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    BaseUnitSelector(
-                      baseUnit: _baseUnit,
-                      unitKeys: _unitOptions.keys.toList(),
-                      onChanged: _onBaseUnitChanged,
-                    ),
-                    SizedBox(height: 32),
-                    ProductInputCard(
-                      title: 'PRODUTO 1',
-                      quantityController: _quantityController1,
-                      priceController: _priceController1,
-                      selectedUnit: _unit1,
-                      unitOptions: _unitOptions[_baseUnit]!,
-                      onUnitChanged: (newValue) {
-                        setState(() => _unit1 = newValue!);
-                      },
-                    ),
-                    SizedBox(height: 20),
-                    CalculationResultButton(
-                      isExpanded: _isExpanded,
-                      showResult: _showResult,
-                      resultMessage: _resultMessage,
-                      calculationDetails1: _calculationDetails1,
-                      calculationDetails2: _calculationDetails2,
-                      isArrowDown: _isArrowDown,
-                      showDownArrowButton: _showDownArrowButton,
-                      onCalculate: _comparePrices,
-                      onToggleExpand: _toggleExpand,
-                      onReset: _resetFields,
-                    ),
-                    if (_showResult && _resultMessage.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Adicionar um dos produtos ao carrinho:',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.add_shopping_cart),
-                            label: const Text('Produto 1'),
-                            onPressed: () => _handleAddToCart(1),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white),
-                          ),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.add_shopping_cart),
-                            label: const Text('Produto 2'),
-                            onPressed: () => _handleAddToCart(2),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white),
-                          ),
-                        ],
-                      )
-                    ],
+              
+              const SizedBox(height: 24),
 
-                    const SizedBox(height: 20),
-                    ProductInputCard(
-                      title: 'PRODUTO 2',
-                      quantityController: _quantityController2,
-                      priceController: _priceController2,
-                      selectedUnit: _unit2,
-                      unitOptions: _unitOptions[_baseUnit]!,
-                      onUnitChanged: (newValue) {
-                        setState(() => _unit2 = newValue!);
-                      },
+              // 2. Seletor de Unidade Base "PRODUTO EM"
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: kGreyLightColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "PRODUTO EM",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: kTextColor,
+                      ),
+                    ),
+                    Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: kTextColor, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _baseUnit,
+                          icon: const Icon(Icons.keyboard_arrow_down, color: kTextColor),
+                          style: const TextStyle(
+                            color: kTextColor, 
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16
+                          ),
+                          onChanged: _onBaseUnitChanged,
+                          items: _unitOptions.keys.map((String key) {
+                            String label = key == 'g' ? 'Massa (Kg/g)' : 
+                                           key == 'L' ? 'Volume (L/mL)' : 'Unidade';
+                            return DropdownMenuItem<String>(
+                              value: key,
+                              child: Text(label),
+                            );
+                          }).toList(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
+              
+              const SizedBox(height: 24),
+
+              // 3. Card ITEM 1
+              _buildProductCard(
+                title: "ITEM 1",
+                quantityController: _quantityController1,
+                priceController: _priceController1,
+                unitValue: _unit1,
+                onUnitChanged: (val) => setState(() => _unit1 = val!),
+              ),
+
+              const SizedBox(height: 24),
+
+              // 4. Botão Calcular
+              InkWell(
+                onTap: _comparePrices,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: kDarkColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.add, color: Colors.white, size: 30),
+                      SizedBox(width: 12),
+                      Text(
+                        "CALCULAR",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // --- Exibição dos Resultados (Só aparece se calculado) ---
+              if (_showResult) ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9), // Verde claro
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.green.shade700, width: 2),
+                  ),
+                  child: Column(
+                    children: [
+                      // Resultado Principal
+                      Text(
+                        _resultMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.green.shade900,
+                        ),
+                      ),
+                      // Detalhes (Expansíveis)
+                      if (_calculationDetails1.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        if (!_isExpanded) 
+                          TextButton.icon(
+                            onPressed: _toggleExpand,
+                            icon: const Icon(Icons.info_outline, size: 18),
+                            label: const Text("Ver detalhes do cálculo"),
+                          ),
+                        if (_isExpanded) ...[
+                          const Divider(color: Colors.green),
+                          const SizedBox(height: 8),
+                          Text(
+                            _calculationDetails1,
+                            style: TextStyle(color: Colors.green.shade800, fontSize: 14),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _calculationDetails2,
+                            style: TextStyle(color: Colors.green.shade800, fontSize: 14),
+                          ),
+                          TextButton(
+                            onPressed: _toggleExpand,
+                            child: const Text("Ocultar detalhes"),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Adicionar ao Carrinho:",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _handleAddToCart(1),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kYellowColor,
+                          foregroundColor: kTextColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                        ),
+                        child: const Text("ITEM 1", style: TextStyle(fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _handleAddToCart(2),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kYellowColor,
+                          foregroundColor: kTextColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                        ),
+                        child: const Text("ITEM 2", style: TextStyle(fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: _resetFields,
+                      icon: const Icon(Icons.refresh),
+                      tooltip: "Limpar tudo",
+                      style: IconButton.styleFrom(backgroundColor: kGreyLightColor),
+                    )
+                  ],
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
+              // 5. Card ITEM 2
+              _buildProductCard(
+                title: "ITEM 2",
+                quantityController: _quantityController2,
+                priceController: _priceController2,
+                unitValue: _unit2,
+                onUnitChanged: (val) => setState(() => _unit2 = val!),
+              ),
+              
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Método Auxiliar para Desenhar o Card do Produto (Estilo Idêntico à Imagem) ---
+  Widget _buildProductCard({
+    required String title,
+    required TextEditingController quantityController,
+    required TextEditingController priceController,
+    required String unitValue,
+    required Function(String?) onUnitChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: kGreyLightColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título "ITEM X"
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: kTextColor,
             ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              // Input Esquerdo: Quantidade + Unidade
+              Expanded(
+                flex: 5,
+                child: Container(
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: kGreyDarkerColor, // Cor cinza mais escura do input
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      // Campo de Texto da Quantidade
+                      Expanded(
+                        child: TextField(
+                          controller: quantityController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          decoration: const InputDecoration(
+                            hintText: "0",
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      // Dropdown da Unidade
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: unitValue,
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                          style: const TextStyle(color: kTextColor, fontSize: 14),
+                          onChanged: onUnitChanged,
+                          items: _unitOptions[_baseUnit]!.map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+
+              // Input Direito: Preço
+              Expanded(
+                flex: 4,
+                child: Container(
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: kGreyDarkerColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text("R\$", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: TextField(
+                          controller: priceController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          decoration: const InputDecoration(
+                            hintText: "0",
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-
-  
 }
