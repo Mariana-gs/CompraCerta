@@ -10,6 +10,21 @@ Muitas pessoas não têm controle claro sobre o **custo total das compras** e a 
 
 ---
 
+## ODS Relacionado  
+O projeto **CompraCerta** contribui principalmente para dois Objetivos de Desenvolvimento Sustentável da ONU:
+
+### **ODS 9 — Indústria, Inovação e Infraestrutura**  
+O aplicativo representa uma solução tecnológica que promove o uso de **inovação digital** para facilitar a organização financeira do usuário. Ao oferecer uma ferramenta acessível, simples e prática, o projeto incentiva o uso da tecnologia como infraestrutura para apoiar decisões mais eficientes no cotidiano.
+
+### **ODS 12 — Consumo e Produção Responsáveis**  
+O app incentiva práticas de **consumo consciente**, permitindo ao usuário:  
+- comparar preços por unidade;  
+- evitar desperdícios ao comprar de forma planejada;  
+- acompanhar o orçamento e evitar gastos excessivos.  
+
+Assim, o CompraCerta contribui para escolhas de consumo mais responsáveis e econômicas.
+
+---
 ## Tipo de Solução  
 Será desenvolvido um **aplicativo mobile multiplataforma (Flutter)**, sem persistência local, com interface intuitiva para:  
 - Criar e editar listas de compras;  
